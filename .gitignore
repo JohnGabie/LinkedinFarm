@@ -1,15 +1,43 @@
+# ============================
+# Ignorar arquivos sensíveis
+# ============================
 /conexao-bot/src/utils/linkedin_credentials.json
-/.idea/misc.xml
+/conexao-bot/connections.json
+/conexao-bot/profiles.json
 
-/conexao-bot/src/connections.json
-/conexao-bot/src/profiles.json
-/conexao-bot/src/utils/jessy
-/conexao-bot/src/__pycache__/bot.cpython-312-pytest-8.4.0.pyc
-/conexao-bot/src/config/__pycache__/try_login.cpython-312.pyc
-/core/persistent/
-/conexao-bot/src/.user_data/
+# ============================
+# Dados temporários / cache
+# ============================
+/conexao-bot/src/__pycache__/
+/conexao-bot/config/__pycache__/
+/core/__pycache__/
+/core/handle/__pycache__/
 /core/.user_data/
+/conexao-bot/src/.user_data/
+/conexao-bot/src/utils/jessy
 /core/core/
 /core/utils/
+
+# ============================
+# Arquivos de IDE
+# ============================
+.idea/
+.idea/FarmConectionsLinkedin.iml
+.idea/misc.xml
+
+# ============================
+# Arquivos temporários e compilados
+# ============================
+*.pyc
+
+# ============================
+# Arquivos do projeto local
+# ============================
 /shared/database/contacts.xlsx
 /shared/database/test.py
+/core/persistent/
+core/__pycache__/orchestrator.cpython-312.pyc
+core/__pycache__/session_manager.cpython-312.pyc
+core/__pycache__/tab_manager.cpython-312.pyc
+core/handle/__pycache__/try_login.cpython-312.pyc
+shared/database/__pycache__/database_manager.cpython-312.py

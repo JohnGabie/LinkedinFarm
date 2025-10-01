@@ -14,7 +14,7 @@ def main():
         # ==== LÓGICA ANTIGA MANTIDA ====
         print("Login attempt: Success")
 
-        search = LinkedInSearch("tech Recruiter", "1")
+        search = LinkedInSearch("Dell", "1")
         search_url = search.get_url()
         print(f"Navigating to search URL: {search_url}")
 
