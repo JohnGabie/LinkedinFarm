@@ -1,9 +1,16 @@
 # ============================
 # Ignorar arquivos sensíveis
 # ============================
+.env
+.env.*
+!.env.example
+/core/utils/linkedin_credentials.json
 /conexao-bot/src/utils/linkedin_credentials.json
 /conexao-bot/connections.json
 /conexao-bot/profiles.json
+# gerados na raiz quando o bot roda de lá
+/connections.json
+/profiles.json
 
 # ============================
 # Dados temporários / cache

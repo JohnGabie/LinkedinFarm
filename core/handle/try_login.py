@@ -1,42 +1,97 @@
 import json
 import os
+import sys
+
+from dotenv import load_dotenv
 
 
 # Constantes
 FEED_URL = "https://www.linkedin.com/feed/"
 LOGIN_URL = "https://www.linkedin.com/login"
-SESSION_KEY_SELECTOR = "input[name='session_key']"
-SESSION_PASSWORD_SELECTOR = "input[name='session_password']"
-SUBMIT_BUTTON_SELECTOR = "button[type='submit']"
+# O LinkedIn não usa mais <form>, nem name='session_key', nem button[type=submit]:
+# os ids são ofuscados e trocam a cada carregamento. Só sobrou o type dos inputs.
+# Atenção: a página renderiza um par de inputs INVISÍVEL antes do par real, por
+# isso todo acesso passa por visible=true (ver first_visible).
+SESSION_KEY_SELECTOR = "input[type='email']"
+SESSION_PASSWORD_SELECTOR = "input[type='password']"
 TIMEOUT = 10000  # 10 segundos
 WAIT_AFTER_GOTO = 2000  # 2 segundos
 WAIT_FOR_URL_TIMEOUT = 15000  # 15 segundos
 DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 JSON_FILE = os.path.join(DIR, "core", "utils", "linkedin_credentials.json")
 
+def first_visible(page, selector):
+    """Primeiro elemento VISÍVEL do seletor, ou None.
+
+    A página de login tem um par de inputs oculto antes do real; pegar o
+    primeiro match cru preenche o campo errado.
+    """
+    loc = page.locator(selector)
+    for i in range(loc.count()):
+        if loc.nth(i).is_visible():
+            return loc.nth(i)
+    return None
+
+def find_submit_button(page):
+    """Acha o botão 'Entrar' sem depender de idioma nem de classe.
+
+    Não existe mais button[type=submit]. O botão de entrar é o único botão
+    visível SEM ícone abaixo do campo de senha — os de cima são os sociais
+    (Microsoft/Apple/Google) e o olhinho de 'exibir senha', todos com <img>/<svg>.
+    """
+    password = first_visible(page, SESSION_PASSWORD_SELECTOR)
+    if password is None:
+        return None
+    password_box = password.bounding_box()
+    if password_box is None:
+        return None
+
+    buttons = page.locator("button")
+    for i in range(buttons.count()):
+        button = buttons.nth(i)
+        if not button.is_visible():
+            continue
+        box = button.bounding_box()
+        if box is None or box["y"] <= password_box["y"]:
+            continue
+        if button.locator("img, svg").count():
+            continue
+        return button
+    return None
+
 def load_credentials():
-    """Carrega as credenciais do arquivo JSON."""
+    """Carrega as credenciais do .env (ou variáveis de ambiente) e do JSON.
+
+    O JSON guarda o token li_at em cache; email/senha do ambiente têm
+    precedência sobre o que estiver salvo nele.
+    """
+    load_dotenv(os.path.join(DIR, ".env"))
+
     try:
         with open(JSON_FILE, "r") as f:
-            return json.load(f)
+            credentials = json.load(f)
     except FileNotFoundError:
-        print(f"Arquivo {JSON_FILE} não encontrado. Criando um novo arquivo com credenciais vazias.")
-        login = input("Por favor, insira seu email do LinkedIn: ").strip()
-        password = input("Por favor, insira sua senha do LinkedIn: ").strip()
-        if not login or not password:
-            raise ValueError("Email e senha não podem estar vazios.")
+        credentials = {"platform": "linkedin", "login": "", "password": "", "auth": []}
 
-        new_credentials = {
-            "platform": "linkedin",
-            "login": login,
-            "password": password,
-            "auth": []
-        }
-        os.makedirs(os.path.dirname(JSON_FILE), exist_ok=True)
-        with open(JSON_FILE, "w") as f:
-            json.dump(new_credentials, f, indent=2)
-            print(f"Novo arquivo {JSON_FILE} criado com sucesso.")
-        return new_credentials
+    credentials["login"] = os.getenv("LINKEDIN_EMAIL") or credentials.get("login", "")
+    credentials["password"] = os.getenv("LINKEDIN_PASSWORD") or credentials.get("password", "")
+
+    # Sem credenciais, pergunta no terminal — mas nunca trava: sem terminal
+    # (container, script, pipe) input() estoura EOFError e seguimos sem elas,
+    # deixando o login manual assumir. Não dá pra confiar em stdin.isatty():
+    # no Windows o NUL é char device e isatty() responde True.
+    if not (credentials["login"] and credentials["password"]) and sys.stdin.isatty():
+        print(f"Credenciais não encontradas em {JSON_FILE} nem em LINKEDIN_EMAIL/LINKEDIN_PASSWORD.")
+        try:
+            credentials["login"] = input("Email do LinkedIn (enter para pular): ").strip()
+            credentials["password"] = input("Senha do LinkedIn (enter para pular): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("(sem terminal interativo — seguindo sem credenciais)")
+            credentials["login"] = credentials["password"] = ""
+        if credentials["login"] and credentials["password"]:
+            save_credentials(credentials)
+
+    return credentials
 
 def save_credentials(data):
     """Salva as credenciais no arquivo JSON."""
@@ -74,11 +129,27 @@ def attempt_credential_login(page, credentials):
     try:
         print("Tentando login com credenciais.")
         page.goto(LOGIN_URL, timeout=TIMEOUT)
-        page.wait_for_selector(SESSION_KEY_SELECTOR, timeout=TIMEOUT)
-        page.fill(SESSION_KEY_SELECTOR, credentials["login"])
-        page.fill(SESSION_PASSWORD_SELECTOR, credentials["password"])
-        page.click(SUBMIT_BUTTON_SELECTOR)
-        page.wait_for_url(FEED_URL, timeout=WAIT_FOR_URL_TIMEOUT)
+        page.wait_for_selector(SESSION_KEY_SELECTOR, timeout=TIMEOUT, state="attached")
+
+        email_field = first_visible(page, SESSION_KEY_SELECTOR)
+        password_field = first_visible(page, SESSION_PASSWORD_SELECTOR)
+        submit_button = find_submit_button(page)
+        if not (email_field and password_field and submit_button):
+            print("[!] Formulário de login não reconhecido — o LinkedIn mudou a página de novo.")
+            page.screenshot(path="login_failure.png")
+            return False
+
+        email_field.fill(credentials["login"])
+        password_field.fill(credentials["password"])
+        submit_button.click()
+        # URL frouxa: o LinkedIn redireciona pro feed com querystring variável.
+        # Timeout aqui não é erro: quase sempre é checkpoint/captcha, e o
+        # diagnóstico útil está logo abaixo.
+        try:
+            page.wait_for_url("**/feed/**", timeout=WAIT_FOR_URL_TIMEOUT)
+        except Exception:
+            pass
+
         if FEED_URL in page.url:
             print("Login bem-sucedido com credenciais.")
             return True
