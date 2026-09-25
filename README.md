@@ -6,8 +6,6 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-45ba4b?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Selenium](https://img.shields.io/badge/Selenium-43B02A?style=for-the-badge&logo=selenium&logoColor=white)](https://www.selenium.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 </div>
@@ -128,10 +126,11 @@ Nenhuma leitura de código mostraria isso. Só rodando.
   autenticada sobrevive entre execuções)
 - **pandas + openpyxl** — camada de persistência em planilha
 - **python-dotenv** — credenciais via `.env`
-- **pytest + pytest-playwright** — dependências de teste
 
-O `Dockerfile` e o `docker-compose.yml` continuam no repositório, mas
-**não funcionam** — veja [Docker](#-docker-quebrado).
+São **12 dependências**, todas em uso. O projeto já carregou Selenium,
+webdriver-manager, requests, slugify e pytest no `requirements.txt` sem
+importar nenhum deles em lugar nenhum — foram removidos, junto do
+`Dockerfile` e do `docker-compose.yml`, que nunca chegaram a subir.
 
 ---
 
@@ -199,18 +198,6 @@ seguintes retomam de onde pararam. O alvo da busca ainda é editado direto no
 ```python
 search = LinkedInSearch("Dell", "1")   # termo de busca e página inicial
 ```
-
-### 🐳 Docker (quebrado)
-
-O caminho Docker **não sobe**, e ficou documentado em vez de corrigido:
-
-- `Dockerfile:42` — `CMD ["python", "src/bot.py"]` aponta para um caminho que
-  não existe na imagem
-- `Dockerfile:8-26` — os pacotes do `apt-get` usam nomes pré-transição t64
-  (`libasound2`, `libatk1.0-0`, `libcups2`…), renomeados para `*t64` na
-  `python:3.12-slim` atual (Debian 13)
-- `docker-compose.yml:11-12` — monta `./profiles.json` e `./connections.json`,
-  que não existem no repo; o Docker cria *diretórios* com esses nomes
 
 ---
 
