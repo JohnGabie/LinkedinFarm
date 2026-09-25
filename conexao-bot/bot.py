@@ -1,9 +1,24 @@
-from core.orchestrator import BrowserOrchestrator
-from config.button_handler import get_connect_buttons, process_connect_button, hit_weekly_limit
-from config.linkedin_search import LinkedInSearch
-from config.web_scraper_profiles import scrape_profiles, save_to_bank, load_connection_count
+import os
+import sys
 
-MAX_CONNECTIONS = 200
+# 'core'/'shared' moram na raiz e 'config' mora aqui do lado: sem isso o script
+# não importa de nenhum diretório de trabalho ('conexao-bot' tem hífen, então
+# não dá pra ser pacote).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [os.path.dirname(_HERE), _HERE]
+
+from core.orchestrator import BrowserOrchestrator
+from config.button_handler import (
+    get_connect_buttons,
+    process_connect_button,
+    hit_weekly_limit,
+    RESULTS_LIST_SELECTOR,
+)
+from config.linkedin_search import LinkedInSearch
+from config.web_scraper_profiles import scrape_profiles, save_to_bank, load_connection_count, save_connection_count
+
+# Dá pra baixar sem editar o arquivo: MAX_CONNECTIONS=5 python conexao-bot/bot.py
+MAX_CONNECTIONS = int(os.getenv("MAX_CONNECTIONS", "200"))
 
 def main():
     # Inicia o orchestrator (já cuida do login via Core)
@@ -20,6 +35,9 @@ def main():
 
         page.goto(search_url)
         page.wait_for_load_state("domcontentloaded")
+        # A lista é renderizada por JS depois do domcontentloaded: sem esperar,
+        # o scrape logo abaixo encontra a página vazia e salva 0 perfis.
+        page.wait_for_selector(RESULTS_LIST_SELECTOR)
 
         title = page.title()
         print(f"Page title: {title}")
@@ -36,7 +54,9 @@ def main():
             page.goto(url)
 
             try:
-                page.wait_for_selector("div[data-chameleon-result-urn]")
+                # espera a lista de resultados existir (o antigo
+                # div[data-chameleon-result-urn] não existe mais)
+                page.wait_for_selector(RESULTS_LIST_SELECTOR)
             except Exception:
                 print(f"[!] Nenhum conteúdo de perfil carregado na página {page_num}. Encerrando busca.")
                 break
@@ -46,11 +66,15 @@ def main():
             if connect_buttons:
                 conexoes_feitas_na_pagina = 0
                 for button in connect_buttons:
-                    process_connect_button(button, page)
+                    # Só conta o que realmente virou convite: process_connect_button
+                    # retorna False quando o clique falha ou o perfil já está conectado.
+                    if not process_connect_button(button, page):
+                        continue
                     conexoes_feitas_na_pagina += 1
                     connections_made += 1
                     if connections_made >= MAX_CONNECTIONS:
                         break
+                save_connection_count(connections_made)
                 print(f"[✔] Página {page_num}: {conexoes_feitas_na_pagina} conexões feitas de total({connections_made}).")
             else:
                 print(f"[→] Página {page_num}: 0 conexões encontradas de total({connections_made}).")

@@ -1,43 +1,33 @@
 # ============================
 # Ignorar arquivos sensíveis
 # ============================
-/conexao-bot/src/utils/linkedin_credentials.json
-/conexao-bot/connections.json
-/conexao-bot/profiles.json
+.env
+.env.*
+!.env.example
+linkedin_credentials.json
+
+# Sessão autenticada do Chromium (cookies!)
+.user_data/
 
 # ============================
-# Dados temporários / cache
+# Saída dos bots
 # ============================
-/conexao-bot/src/__pycache__/
-/conexao-bot/config/__pycache__/
-/core/__pycache__/
-/core/handle/__pycache__/
-/core/.user_data/
-/conexao-bot/src/.user_data/
-/conexao-bot/src/utils/jessy
-/core/core/
-/core/utils/
+connections.json
+profiles.json
+contacts.xlsx
+login_error.png
+login_failure.png
 
 # ============================
-# Arquivos de IDE
+# Python
+# ============================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ============================
+# IDE
 # ============================
 .idea/
-.idea/FarmConectionsLinkedin.iml
-.idea/misc.xml
-
-# ============================
-# Arquivos temporários e compilados
-# ============================
-*.pyc
-
-# ============================
-# Arquivos do projeto local
-# ============================
-/shared/database/contacts.xlsx
-/shared/database/test.py
-/core/persistent/
-core/__pycache__/orchestrator.cpython-312.pyc
-core/__pycache__/session_manager.cpython-312.pyc
-core/__pycache__/tab_manager.cpython-312.pyc
-core/handle/__pycache__/try_login.cpython-312.pyc
-shared/database/__pycache__/database_manager.cpython-312.py
+.vscode/

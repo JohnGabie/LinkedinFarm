@@ -1,3 +1,9 @@
+import os
+import sys
+
+# 'core'/'shared' moram na raiz do projeto, dois níveis acima deste arquivo.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 from core.orchestrator import BrowserOrchestrator
 from shared.database.database_manager import upsert_contact, mark_invited, load_db
 
@@ -19,7 +25,7 @@ def main():
         print("Executando Bot de conexão inicial...")
 
     finally:
-       orch.close_page(orch)
+       orch.close_page(page)
 
 
 if __name__ == '__main__':
